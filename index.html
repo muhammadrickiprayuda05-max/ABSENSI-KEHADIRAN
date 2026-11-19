@@ -1,67 +1,174 @@
-function doPost(e) {
-  try {
-    var ss = SpreadsheetApp.getActiveSpreadsheet();
-    var sheet = ss.getSheetByName("Sheet2");
-    var folder = DriveApp.getFolderById("1fFPCGCp7Nz9CfdhAOjn0j8egzhvidP_R");
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Absensi Kehadiran</title>
+    <style>
+        body { font-family: Arial, sans-serif; background-color: #f4f7f6; display: flex; justify-content: center; padding: 20px; margin: 0; }
+        .container { background: white; padding: 25px; border-radius: 12px; box-shadow: 0 4px 10px rgba(0,0,0,0.1); max-width: 400px; width: 100%; text-align: center; }
+        h2 { color: #333; margin-bottom: 15px; }
+        input[type="text"], select { width: 100%; padding: 12px; margin: 8px 0; border: 1px solid #ccc; border-radius: 6px; box-sizing: border-box; font-size: 16px; }
+        .btn-camera { display: block; width: 100%; padding: 14px; margin-top: 15px; background-color: #007bff; color: white; border-radius: 6px; font-size: 16px; font-weight: bold; cursor: pointer; box-sizing: border-box; }
+        input[type="file"] { display: none; }
+        canvas { width: 100%; border-radius: 8px; margin-top: 15px; display: none; border: 1px solid #ddd; }
+        .btn-submit { width: 100%; padding: 14px; margin-top: 12px; border: none; border-radius: 6px; font-size: 16px; font-weight: bold; cursor: pointer; background-color: #28a745; color: white; display: none; }
+        .status { margin-top: 15px; font-size: 14px; font-weight: bold; }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <h2>Absensi Kehadiran</h2>
+    <input type="text" id="nama" placeholder="Masukkan Nama Lengkap" required>
     
-    var data = JSON.parse(e.postData.contents);
-    var namaInput = data.nama.trim();
-    var keterangan = data.keterangan;
-    var durasiBreak = data.durasiBreak || "";
-    var linkFoto = "";
-    
-    // Simpan foto ke Google Drive HANYA jika bukan Break
-    if (data.foto && data.foto.indexOf(',') !== -1) {
-      var bagianFoto = data.foto.split(',');
-      var decoded = Utilities.base64Decode(bagianFoto);
-      var blob = Utilities.newBlob(decoded, "image/jpeg", "Absen_" + namaInput + "_" + keterangan + "_" + new Date().getTime() + ".jpg");
-      var file = folder.createFile(blob);
-      file.setSharing(DriveApp.Access.ANYONE_WITH_LINK, DriveApp.Permission.VIEW);
-      linkFoto = file.getUrl();
+    <select id="keterangan" onchange="cekPilihanBreak()">
+        <option value="Masuk">Absen Masuk</option>
+        <option value="Break">Absen Break (Istirahat)</option>
+        <option value="Pulang">Absen Pulang</option>
+    </select>
+
+    <!-- Pilihan durasi istirahat 1:30 dan 2:30 -->
+    <select id="durasiBreak" style="display: none; background-color: #fff8e1; border-color: #ffc107;">
+        <option value="1:30">Istirahat 1:30 (Satu Jam Setengah)</option>
+        <option value="2:30">Istirahat 2:30 (Dua Jam Setengah)</option>
+    </select>
+
+    <label for="inputKamera" class="btn-camera" id="labelKamera">Buka Kamera & Ambil Foto</label>
+    <input type="file" id="inputKamera" accept="image/*" capture="user">
+
+    <canvas id="canvas"></canvas>
+
+    <button type="button" class="btn-submit" id="btnSubmit">Kirim Absensi</button>
+    <div class="status" id="statusText"></div>
+</div>
+
+<script>
+    const inputKamera = document.getElementById('inputKamera');
+    const labelKamera = document.getElementById('labelKamera');
+    const canvas = document.getElementById('canvas');
+    const context = canvas.getContext('2d');
+    const btnSubmit = document.getElementById('btnSubmit');
+    const statusText = document.getElementById('statusText');
+    const keteranganSelect = document.getElementById('keterangan');
+    const durasiBreakSelect = document.getElementById('durasiBreak');
+    let sudahAmbilFoto = false;
+
+    // Menyembunyikan tombol kamera dan langsung memunculkan tombol Kirim saat memilih Absen Break
+    function cekPilihanBreak() {
+        statusText.innerText = "";
+        if (keteranganSelect.value === "Break") {
+            durasiBreakSelect.style.display = "block";
+            labelKamera.style.display = "none";
+            canvas.style.display = "none";
+            btnSubmit.style.display = "block";
+        } else {
+            durasiBreakSelect.style.display = "none";
+            labelKamera.style.display = "block";
+            if (sudahAmbilFoto) {
+                canvas.style.display = "block";
+                btnSubmit.style.display = "block";
+            } else {
+                canvas.style.display = "none";
+                btnSubmit.style.display = "none";
+            }
+        }
     }
-    
-    // Format tanggal dan jam sekarang (WIB)
-    var tanggalSekarang = Utilities.formatDate(new Date(), "Asia/Jakarta", "dd/MM/yyyy");
-    var jamSekarang = Utilities.formatDate(new Date(), "Asia/Jakarta", "h:mm:ss a");
-    
-    // Cari baris nama di Kolom B pada Sheet2
-    var lastRow = sheet.getLastRow();
-    var namaRange = sheet.getRange(1, 2, lastRow, 1).getValues();
-    var barisDitemukan = -1;
-    
-    for (var i = 0; i < namaRange.length; i++) {
-      if (namaRange[i].toString().trim().toLowerCase() === namaInput.toLowerCase()) {
-        barisDitemukan = i + 1;
-        break;
-      }
-    }
-    
-    // Jika nama tidak ada di daftar, buat baris baru di bawah
-    if (barisDitemukan === -1) {
-      barisDitemukan = lastRow + 1;
-      sheet.getRange(barisDitemukan, 2).setValue(namaInput);
-    }
-    
-    // Isi tanggal di Kolom A
-    sheet.getRange(barisDitemukan, 1).setValue(tanggalSekarang);
-    
-    // Isi jam dan link foto murni di kolom masing-masing
-    if (keterangan === "Masuk") {
-      sheet.getRange(barisDitemukan, 3).setValue(jamSekarang);
-      if (linkFoto !== "") {
-        sheet.getRange(barisDitemukan, 6).setValue(linkFoto); // Kolom F = FOTO MASUK
-      }
-    } else if (keterangan === "Break") {
-      sheet.getRange(barisDitemukan, 4).setValue(durasiBreak + " (" + jamSekarang + ")");
-    } else if (keterangan === "Pulang") {
-      sheet.getRange(barisDitemukan, 5).setValue(jamSekarang);
-      if (linkFoto !== "") {
-        sheet.getRange(barisDitemukan, 7).setValue(linkFoto); // Kolom G = FOTO PULANG
-      }
-    }
-    
-    return ContentService.createTextOutput(JSON.stringify({"status": "sukses"})).setMimeType(ContentService.MimeType.JSON);
-  } catch (err) {
-    return ContentService.createTextOutput(JSON.stringify({"status": "error", "message": err.toString()})).setMimeType(ContentService.MimeType.JSON);
-  }
-}
+
+    // Memproses foto dari kamera asli HP (hanya untuk Masuk dan Pulang)
+    inputKamera.addEventListener('change', function(event) {
+        const nama = document.getElementById('nama').value.trim();
+        if (!nama) {
+            alert("Harap isi Nama Lengkap terlebih dahulu sebelum mengambil foto!");
+            inputKamera.value = "";
+            return;
+        }
+
+        const file = event.target.files[0];
+        if (!file) return;
+
+        const reader = new FileReader();
+        reader.onload = function(e) {
+            const img = new Image();
+            img.onload = function() {
+                const maxWidth = 800;
+                const scale = maxWidth / img.width;
+                canvas.width = maxWidth;
+                canvas.height = img.height * scale;
+
+                context.drawImage(img, 0, 0, canvas.width, canvas.height);
+
+                const waktu = new Date().toLocaleString('id-ID');
+                context.fillStyle = "rgba(0, 0, 0, 0.65)";
+                context.fillRect(10, canvas.height - 75, canvas.width - 20, 65);
+                context.fillStyle = "white";
+                context.font = "bold 20px Arial";
+                context.fillText(nama + " (" + keteranganSelect.value + ")", 20, canvas.height - 45);
+                context.font = "18px Arial";
+                context.fillText(waktu, 20, canvas.height - 18);
+
+                sudahAmbilFoto = true;
+                canvas.style.display = 'block';
+                btnSubmit.style.display = 'block';
+                labelKamera.innerText = "Foto Ulang";
+                labelKamera.style.backgroundColor = "#6c757d";
+                statusText.innerText = "";
+            };
+            img.src = e.target.result;
+        };
+        reader.readAsDataURL(file);
+    });
+
+    // Kirim data ke Google Sheets (dan foto jika bukan Break)
+    btnSubmit.addEventListener('click', () => {
+        const nama = document.getElementById('nama').value.trim();
+        if (!nama) {
+            alert("Harap isi Nama Lengkap terlebih dahulu!");
+            return;
+        }
+
+        const keterangan = keteranganSelect.value;
+        const durasiBreak = durasiBreakSelect.value;
+        const fotoBase64 = (keterangan === "Break") ? "" : canvas.toDataURL('image/jpeg', 0.8);
+        
+        // GANTI DENGAN URL WEB APP GOOGLE APPS SCRIPT ANDA
+        const scriptURL = "https://script.google.com/macros/s/AKfycbxjMbOJGdmnAAdn1bUjPyFBvZLyfNJkekw7RYGGnNqb1Pi045AI4FohHcsp5XAcBSss/exec";
+
+        if (scriptURL === "TEMPEL_URL_APPS_SCRIPT_ANDA_DI_SINI") {
+            alert("URL Google Apps Script belum dimasukkan ke dalam kode.");
+            return;
+        }
+
+        btnSubmit.disabled = true;
+        statusText.style.color = "#007bff";
+        statusText.innerText = "Sedang mengirim absensi...";
+
+        fetch(scriptURL, {
+            method: 'POST',
+            mode: 'no-cors',
+            headers: {
+                'Content-Type': 'text/plain'
+            },
+            body: JSON.stringify({ 
+                nama: nama, 
+                keterangan: keterangan, 
+                durasiBreak: durasiBreak,
+                foto: fotoBase64 
+            })
+        })
+        .then(() => {
+            statusText.style.color = "#28a745";
+            statusText.innerText = "Absensi berhasil tersimpan!";
+            btnSubmit.style.display = 'none';
+            labelKamera.style.display = 'none';
+        })
+        .catch(error => {
+            statusText.style.color = "#dc3545";
+            statusText.innerText = "Gagal mengirim: " + error.message;
+            btnSubmit.disabled = false;
+        });
+    });
+</script>
+
+</body>
+</html>
