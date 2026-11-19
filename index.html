@@ -3,18 +3,17 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Absensi Foto Online</title>
+    <title>Absensi Kehadiran</title>
     <style>
         body { font-family: Arial, sans-serif; background-color: #f4f7f6; display: flex; justify-content: center; padding: 20px; margin: 0; }
         .container { background: white; padding: 25px; border-radius: 12px; box-shadow: 0 4px 10px rgba(0,0,0,0.1); max-width: 400px; width: 100%; text-align: center; }
         h2 { color: #333; margin-bottom: 15px; }
-        input, select { width: 100%; padding: 10px; margin: 8px 0; border: 1px solid #ccc; border-radius: 6px; box-sizing: border-box; font-size: 16px; }
-        video, canvas { width: 100%; border-radius: 8px; background: #222; margin-top: 10px; }
-        button { width: 100%; padding: 12px; margin-top: 10px; border: none; border-radius: 6px; font-size: 16px; font-weight: bold; cursor: pointer; }
-        .btn-capture { background-color: #007bff; color: white; }
-        .btn-submit { background-color: #28a745; color: white; display: none; }
-        .btn-retake { background-color: #6c757d; color: white; display: none; }
-        .status { margin-top: 15px; font-size: 14px; color: #28a745; font-weight: bold; }
+        input[type="text"], select { width: 100%; padding: 12px; margin: 8px 0; border: 1px solid #ccc; border-radius: 6px; box-sizing: border-box; font-size: 16px; }
+        .btn-camera { display: block; width: 100%; padding: 14px; margin-top: 15px; background-color: #007bff; color: white; border-radius: 6px; font-size: 16px; font-weight: bold; cursor: pointer; box-sizing: border-box; }
+        input[type="file"] { display: none; }
+        canvas { width: 100%; border-radius: 8px; margin-top: 15px; display: none; border: 1px solid #ddd; }
+        .btn-submit { width: 100%; padding: 14px; margin-top: 12px; border: none; border-radius: 6px; font-size: 16px; font-weight: bold; cursor: pointer; background-color: #28a745; color: white; display: none; }
+        .status { margin-top: 15px; font-size: 14px; font-weight: bold; }
     </style>
 </head>
 <body>
@@ -27,65 +26,83 @@
         <option value="Pulang">Absen Pulang</option>
     </select>
 
-    <video id="video" autoplay playsinline></video>
-    <canvas id="canvas" style="display:none;"></canvas>
+    <label for="inputKamera" class="btn-camera" id="labelKamera">Buka Kamera & Ambil Foto</label>
+    <input type="file" id="inputKamera" accept="image/*" capture="user">
 
-    <button type="button" class="btn-capture" id="btnCapture">Ambil Foto</button>
-    <button type="button" class="btn-retake" id="btnRetake">Foto Ulang</button>
+    <canvas id="canvas"></canvas>
+
     <button type="button" class="btn-submit" id="btnSubmit">Kirim Absensi</button>
-
     <div class="status" id="statusText"></div>
 </div>
 
 <script>
-    const video = document.getElementById('video');
+    const inputKamera = document.getElementById('inputKamera');
+    const labelKamera = document.getElementById('labelKamera');
     const canvas = document.getElementById('canvas');
     const context = canvas.getContext('2d');
-    const btnCapture = document.getElementById('btnCapture');
-    const btnRetake = document.getElementById('btnRetake');
     const btnSubmit = document.getElementById('btnSubmit');
     const statusText = document.getElementById('statusText');
 
-    // Mengaktifkan kamera depan
-    navigator.mediaDevices.getUserMedia({ video: { facingMode: "user" }, audio: false })
-        .then(stream => { video.srcObject = stream; })
-        .catch(err => { alert("Gagal mengakses kamera. Pastikan izin kamera aktif dan situs memakai HTTPS."); });
-
-    // Mengambil gambar dan menempelkan waktu otomatis
-    btnCapture.addEventListener('click', () => {
+    // Memproses foto dari kamera asli HP
+    inputKamera.addEventListener('change', function(event) {
         const nama = document.getElementById('nama').value.trim();
-        if (!nama) { alert("Harap isi nama terlebih dahulu!"); return; }
+        if (!nama) {
+            alert("Harap isi Nama Lengkap terlebih dahulu sebelum mengambil foto!");
+            inputKamera.value = "";
+            return;
+        }
 
-        canvas.width = video.videoWidth;
-        canvas.height = video.videoHeight;
-        context.drawImage(video, 0, 0, canvas.width, canvas.height);
+        const file = event.target.files[0];
+        if (!file) return;
 
-        // Tambahkan watermark waktu di pojok kiri bawah foto
-        const waktu = new Date().toLocaleString('id-ID');
-        context.fillStyle = "rgba(0, 0, 0, 0.6)";
-        context.fillRect(10, canvas.height - 65, canvas.width - 20, 55);
-        context.fillStyle = "white";
-        context.font = "18px Arial";
-        context.fillText(nama + " - " + document.getElementById('keterangan').value, 20, canvas.height - 40);
-        context.fillText(waktu, 20, canvas.height - 18);
+        const reader = new FileReader();
+        reader.onload = function(e) {
+            const img = new Image();
+            img.onload = function() {
+                // Perkecil ukuran foto agar cepat terkirim ke Google Drive
+                const maxWidth = 800;
+                const scale = maxWidth / img.width;
+                canvas.width = maxWidth;
+                canvas.height = img.height * scale;
 
-        video.style.display = 'none';
-        canvas.style.display = 'block';
-        btnCapture.style.display = 'none';
-        btnRetake.style.display = 'block';
-        btnSubmit.style.display = 'block';
+                context.drawImage(img, 0, 0, canvas.width, canvas.height);
+
+                // Tempelkan stempel nama, status, dan waktu
+                const waktu = new Date().toLocaleString('id-ID');
+                context.fillStyle = "rgba(0, 0, 0, 0.65)";
+                context.fillRect(10, canvas.height - 75, canvas.width - 20, 65);
+                context.fillStyle = "white";
+                context.font = "bold 20px Arial";
+                context.fillText(nama + " (" + document.getElementById('keterangan').value + ")", 20, canvas.height - 45);
+                context.font = "18px Arial";
+                context.fillText(waktu, 20, canvas.height - 18);
+
+                canvas.style.display = 'block';
+                btnSubmit.style.display = 'block';
+                labelKamera.innerText = "Foto Ulang";
+                labelKamera.style.backgroundColor = "#6c757d";
+                statusText.innerText = "";
+            };
+            img.src = e.target.result;
+        };
+        reader.readAsDataURL(file);
     });
 
-        // Kirim data dan foto langsung ke Google Drive & Sheets Anda
+    // Kirim foto ke Google Drive & Google Sheets
     btnSubmit.addEventListener('click', () => {
         const nama = document.getElementById('nama').value.trim();
         const keterangan = document.getElementById('keterangan').value;
-        const fotoBase64 = canvas.toDataURL('image/png');
+        const fotoBase64 = canvas.toDataURL('image/jpeg', 0.8);
         const scriptURL = "TEMPEL_URL_APPS_SCRIPT_ANDA_DI_SINI";
+
+        if (scriptURL === "TEMPEL_URL_APPS_SCRIPT_ANDA_DI_SINI") {
+            alert("URL Google Apps Script belum dimasukkan ke dalam kode.");
+            return;
+        }
 
         btnSubmit.disabled = true;
         statusText.style.color = "#007bff";
-        statusText.innerText = "Sedang mengirim data...";
+        statusText.innerText = "Sedang mengirim absensi...";
 
         fetch(scriptURL, {
             method: 'POST',
@@ -93,19 +110,15 @@
         })
         .then(response => {
             statusText.style.color = "#28a745";
-            statusText.innerText = "Absensi berhasil tersimpan di sistem!";
+            statusText.innerText = "Absensi berhasil tersimpan!";
             btnSubmit.style.display = 'none';
-            btnRetake.style.display = 'none';
+            labelKamera.style.display = 'none';
         })
         .catch(error => {
             statusText.style.color = "#dc3545";
-            statusText.innerText = "Gagal mengirim. Periksa koneksi internet.";
+            statusText.innerText = "Gagal mengirim. Periksa koneksi internet Anda.";
             btnSubmit.disabled = false;
         });
-    });
-
-
-        statusText.innerText = "Absensi berhasil! Bukti foto telah diunduh.";
     });
 </script>
 
