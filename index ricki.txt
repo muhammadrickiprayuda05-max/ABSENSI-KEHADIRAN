@@ -1,0 +1,113 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Absensi Foto Online</title>
+    <style>
+        body { font-family: Arial, sans-serif; background-color: #f4f7f6; display: flex; justify-content: center; padding: 20px; margin: 0; }
+        .container { background: white; padding: 25px; border-radius: 12px; box-shadow: 0 4px 10px rgba(0,0,0,0.1); max-width: 400px; width: 100%; text-align: center; }
+        h2 { color: #333; margin-bottom: 15px; }
+        input, select { width: 100%; padding: 10px; margin: 8px 0; border: 1px solid #ccc; border-radius: 6px; box-sizing: border-box; font-size: 16px; }
+        video, canvas { width: 100%; border-radius: 8px; background: #222; margin-top: 10px; }
+        button { width: 100%; padding: 12px; margin-top: 10px; border: none; border-radius: 6px; font-size: 16px; font-weight: bold; cursor: pointer; }
+        .btn-capture { background-color: #007bff; color: white; }
+        .btn-submit { background-color: #28a745; color: white; display: none; }
+        .btn-retake { background-color: #6c757d; color: white; display: none; }
+        .status { margin-top: 15px; font-size: 14px; color: #28a745; font-weight: bold; }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <h2>Absensi Kehadiran</h2>
+    <input type="text" id="nama" placeholder="Masukkan Nama Lengkap" required>
+    <select id="keterangan">
+        <option value="Masuk">Absen Masuk</option>
+        <option value="Pulang">Absen Pulang</option>
+    </select>
+
+    <video id="video" autoplay playsinline></video>
+    <canvas id="canvas" style="display:none;"></canvas>
+
+    <button type="button" class="btn-capture" id="btnCapture">Ambil Foto</button>
+    <button type="button" class="btn-retake" id="btnRetake">Foto Ulang</button>
+    <button type="button" class="btn-submit" id="btnSubmit">Kirim Absensi</button>
+
+    <div class="status" id="statusText"></div>
+</div>
+
+<script>
+    const video = document.getElementById('video');
+    const canvas = document.getElementById('canvas');
+    const context = canvas.getContext('2d');
+    const btnCapture = document.getElementById('btnCapture');
+    const btnRetake = document.getElementById('btnRetake');
+    const btnSubmit = document.getElementById('btnSubmit');
+    const statusText = document.getElementById('statusText');
+
+    // Mengaktifkan kamera depan
+    navigator.mediaDevices.getUserMedia({ video: { facingMode: "user" }, audio: false })
+        .then(stream => { video.srcObject = stream; })
+        .catch(err => { alert("Gagal mengakses kamera. Pastikan izin kamera aktif dan situs memakai HTTPS."); });
+
+    // Mengambil gambar dan menempelkan waktu otomatis
+    btnCapture.addEventListener('click', () => {
+        const nama = document.getElementById('nama').value.trim();
+        if (!nama) { alert("Harap isi nama terlebih dahulu!"); return; }
+
+        canvas.width = video.videoWidth;
+        canvas.height = video.videoHeight;
+        context.drawImage(video, 0, 0, canvas.width, canvas.height);
+
+        // Tambahkan watermark waktu di pojok kiri bawah foto
+        const waktu = new Date().toLocaleString('id-ID');
+        context.fillStyle = "rgba(0, 0, 0, 0.6)";
+        context.fillRect(10, canvas.height - 65, canvas.width - 20, 55);
+        context.fillStyle = "white";
+        context.font = "18px Arial";
+        context.fillText(nama + " - " + document.getElementById('keterangan').value, 20, canvas.height - 40);
+        context.fillText(waktu, 20, canvas.height - 18);
+
+        video.style.display = 'none';
+        canvas.style.display = 'block';
+        btnCapture.style.display = 'none';
+        btnRetake.style.display = 'block';
+        btnSubmit.style.display = 'block';
+    });
+
+        // Kirim data dan foto langsung ke Google Drive & Sheets Anda
+    btnSubmit.addEventListener('click', () => {
+        const nama = document.getElementById('nama').value.trim();
+        const keterangan = document.getElementById('keterangan').value;
+        const fotoBase64 = canvas.toDataURL('image/png');
+        const scriptURL = "TEMPEL_URL_APPS_SCRIPT_ANDA_DI_SINI";
+
+        btnSubmit.disabled = true;
+        statusText.style.color = "#007bff";
+        statusText.innerText = "Sedang mengirim data...";
+
+        fetch(scriptURL, {
+            method: 'POST',
+            body: JSON.stringify({ nama: nama, keterangan: keterangan, foto: fotoBase64 })
+        })
+        .then(response => {
+            statusText.style.color = "#28a745";
+            statusText.innerText = "Absensi berhasil tersimpan di sistem!";
+            btnSubmit.style.display = 'none';
+            btnRetake.style.display = 'none';
+        })
+        .catch(error => {
+            statusText.style.color = "#dc3545";
+            statusText.innerText = "Gagal mengirim. Periksa koneksi internet.";
+            btnSubmit.disabled = false;
+        });
+    });
+
+
+        statusText.innerText = "Absensi berhasil! Bukti foto telah diunduh.";
+    });
+</script>
+
+</body>
+</html>
