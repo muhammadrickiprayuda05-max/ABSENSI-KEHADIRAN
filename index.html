@@ -95,20 +95,19 @@
         const fotoBase64 = canvas.toDataURL('image/jpeg', 0.8);
         const scriptURL = "https://script.google.com/macros/s/AKfycbxTeWIc4wVWI111S7eW9ysSckCmp-aNWppQQMwLqXbk7RpDHExqtDl0D2fR1uag5czF/exec";
 
-        if (scriptURL === "TEMPEL_URL_APPS_SCRIPT_ANDA_DI_SINI") {
-            alert("URL Google Apps Script belum dimasukkan ke dalam kode.");
-            return;
-        }
-
         btnSubmit.disabled = true;
         statusText.style.color = "#007bff";
         statusText.innerText = "Sedang mengirim absensi...";
 
         fetch(scriptURL, {
             method: 'POST',
+            mode: 'no-cors',
+            headers: {
+                'Content-Type': 'text/plain'
+            },
             body: JSON.stringify({ nama: nama, keterangan: keterangan, foto: fotoBase64 })
         })
-        .then(response => {
+        .then(() => {
             statusText.style.color = "#28a745";
             statusText.innerText = "Absensi berhasil tersimpan!";
             btnSubmit.style.display = 'none';
@@ -116,7 +115,7 @@
         })
         .catch(error => {
             statusText.style.color = "#dc3545";
-            statusText.innerText = "Gagal mengirim. Periksa koneksi internet Anda.";
+            statusText.innerText = "Gagal mengirim: " + error.message;
             btnSubmit.disabled = false;
         });
     });
