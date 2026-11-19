@@ -8,7 +8,7 @@
         body { font-family: Arial, sans-serif; background-color: #f4f7f6; display: flex; justify-content: center; padding: 20px; margin: 0; }
         .container { background: white; padding: 25px; border-radius: 12px; box-shadow: 0 4px 10px rgba(0,0,0,0.1); max-width: 400px; width: 100%; text-align: center; }
         h2 { color: #333; margin-bottom: 15px; }
-        input[type="text"], select { width: 100%; padding: 12px; margin: 8px 0; border: 1px solid #ccc; border-radius: 6px; box-sizing: border-box; font-size: 16px; }
+        select { width: 100%; padding: 12px; margin: 8px 0; border: 1px solid #ccc; border-radius: 6px; box-sizing: border-box; font-size: 16px; background-color: white; }
         .btn-camera { display: block; width: 100%; padding: 14px; margin-top: 15px; background-color: #007bff; color: white; border-radius: 6px; font-size: 16px; font-weight: bold; cursor: pointer; box-sizing: border-box; }
         input[type="file"] { display: none; }
         canvas { width: 100%; border-radius: 8px; margin-top: 15px; display: none; border: 1px solid #ddd; }
@@ -20,7 +20,38 @@
 
 <div class="container">
     <h2>Absensi Kehadiran</h2>
-    <input type="text" id="nama" placeholder="Masukkan Nama Lengkap" required>
+    
+    <!-- Daftar pilihan nama persis sesuai urutan di Sheet2 -->
+    <select id="nama" required>
+        <option value="">-- Pilih Nama Karyawan --</option>
+        <option value="Muhammad Ricki Prayuda">Muhammad Ricki Prayuda</option>
+        <option value="Arfan Alfarisy">Arfan Alfarisy</option>
+        <option value="Syahfik">Syahfik</option>
+        <option value="Imam Fauzi">Imam Fauzi</option>
+        <option value="Tajul Arhaes">Tajul Arhaes</option>
+        <option value="Adi Ronaldi">Adi Ronaldi</option>
+        <option value="Agib Ibnu">Agib Ibnu</option>
+        <option value="Ahmad Faisal">Ahmad Faisal</option>
+        <option value="ALEXANDER ROBERTO">ALEXANDER ROBERTO</option>
+        <option value="ANDRI SHEF CENGKO">ANDRI SHEF CENGKO</option>
+        <option value="Ariansyah">Ariansyah</option>
+        <option value="Amian">Amian</option>
+        <option value="Aufa Habibi">Aufa Habibi</option>
+        <option value="Dwiki Pradana">Dwiki Pradana</option>
+        <option value="Elih">Elih</option>
+        <option value="Fransiskus Dewa">Fransiskus Dewa</option>
+        <option value="Nandi Aziz">Nandi Aziz</option>
+        <option value="Riki Fadilah">Riki Fadilah</option>
+        <option value="ROY CAVALLERA">ROY CAVALLERA</option>
+        <option value="Abdul Jailani">Abdul Jailani</option>
+        <option value="Ajis Julpani">Ajis Julpani</option>
+        <option value="Muhammad Adam Azhari">Muhammad Adam Azhari</option>
+        <option value="Ray Steven">Ray Steven</option>
+        <option value="Suhendi">Suhendi</option>
+        <option value="Syafrizal Suhendar">Syafrizal Suhendar</option>
+        <option value="Yudha">Yudha</option>
+        <option value="Teguh">Teguh</option>
+    </select>
     
     <select id="keterangan" onchange="cekPilihanBreak()">
         <option value="Masuk">Absen Masuk</option>
@@ -52,9 +83,9 @@
     const statusText = document.getElementById('statusText');
     const keteranganSelect = document.getElementById('keterangan');
     const durasiBreakSelect = document.getElementById('durasiBreak');
+    const namaSelect = document.getElementById('nama');
     let sudahAmbilFoto = false;
 
-    // Menyembunyikan tombol kamera dan langsung memunculkan tombol Kirim saat memilih Absen Break
     function cekPilihanBreak() {
         statusText.innerText = "";
         if (keteranganSelect.value === "Break") {
@@ -75,11 +106,10 @@
         }
     }
 
-    // Memproses foto dari kamera asli HP (hanya untuk Masuk dan Pulang)
     inputKamera.addEventListener('change', function(event) {
-        const nama = document.getElementById('nama').value.trim();
+        const nama = namaSelect.value;
         if (!nama) {
-            alert("Harap isi Nama Lengkap terlebih dahulu sebelum mengambil foto!");
+            alert("Harap pilih Nama Karyawan terlebih dahulu sebelum mengambil foto!");
             inputKamera.value = "";
             return;
         }
@@ -119,11 +149,10 @@
         reader.readAsDataURL(file);
     });
 
-    // Kirim data ke Google Sheets (dan foto jika bukan Break)
     btnSubmit.addEventListener('click', () => {
-        const nama = document.getElementById('nama').value.trim();
+        const nama = namaSelect.value;
         if (!nama) {
-            alert("Harap isi Nama Lengkap terlebih dahulu!");
+            alert("Harap pilih Nama Karyawan terlebih dahulu!");
             return;
         }
 
@@ -131,13 +160,7 @@
         const durasiBreak = durasiBreakSelect.value;
         const fotoBase64 = (keterangan === "Break") ? "" : canvas.toDataURL('image/jpeg', 0.8);
         
-        // GANTI DENGAN URL WEB APP GOOGLE APPS SCRIPT ANDA
-        const scriptURL = "https://script.google.com/macros/s/AKfycbxjMbOJGdmnAAdn1bUjPyFBvZLyfNJkekw7RYGGnNqb1Pi045AI4FohHcsp5XAcBSss/exec";
-
-        if (scriptURL === "TEMPEL_URL_APPS_SCRIPT_ANDA_DI_SINI") {
-            alert("URL Google Apps Script belum dimasukkan ke dalam kode.");
-            return;
-        }
+        const scriptURL = "https://google.com";
 
         btnSubmit.disabled = true;
         statusText.style.color = "#007bff";
