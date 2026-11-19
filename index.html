@@ -21,9 +21,16 @@
 <div class="container">
     <h2>Absensi Kehadiran</h2>
     <input type="text" id="nama" placeholder="Masukkan Nama Lengkap" required>
-    <select id="keterangan">
+    
+    <select id="keterangan" onchange="cekPilihanBreak()">
         <option value="Masuk">Absen Masuk</option>
+        <option value="Break">Absen Break (Istirahat)</option>
         <option value="Pulang">Absen Pulang</option>
+    </select>
+
+    <select id="durasiBreak" style="display: none; background-color: #fff8e1; border-color: #ffc107;">
+        <option value="1:30">Istirahat 1:30 (Satu Jam Setengah)</option>
+        <option value="2:30">Istirahat 2:30 (Dua Jam Setengah)</option>
     </select>
 
     <label for="inputKamera" class="btn-camera" id="labelKamera">Buka Kamera & Ambil Foto</label>
@@ -42,8 +49,17 @@
     const context = canvas.getContext('2d');
     const btnSubmit = document.getElementById('btnSubmit');
     const statusText = document.getElementById('statusText');
+    const keteranganSelect = document.getElementById('keterangan');
+    const durasiBreakSelect = document.getElementById('durasiBreak');
 
-    // Memproses foto dari kamera asli HP
+    function cekPilihanBreak() {
+        if (keteranganSelect.value === "Break") {
+            durasiBreakSelect.style.display = "block";
+        } else {
+            durasiBreakSelect.style.display = "none";
+        }
+    }
+
     inputKamera.addEventListener('change', function(event) {
         const nama = document.getElementById('nama').value.trim();
         if (!nama) {
@@ -59,7 +75,6 @@
         reader.onload = function(e) {
             const img = new Image();
             img.onload = function() {
-                // Perkecil ukuran foto agar cepat terkirim ke Google Drive
                 const maxWidth = 800;
                 const scale = maxWidth / img.width;
                 canvas.width = maxWidth;
@@ -67,13 +82,17 @@
 
                 context.drawImage(img, 0, 0, canvas.width, canvas.height);
 
-                // Tempelkan stempel nama, status, dan waktu
                 const waktu = new Date().toLocaleString('id-ID');
+                let labelStatus = keteranganSelect.value;
+                if (labelStatus === "Break") {
+                    labelStatus = "Break " + durasiBreakSelect.value;
+                }
+
                 context.fillStyle = "rgba(0, 0, 0, 0.65)";
                 context.fillRect(10, canvas.height - 75, canvas.width - 20, 65);
                 context.fillStyle = "white";
                 context.font = "bold 20px Arial";
-                context.fillText(nama + " (" + document.getElementById('keterangan').value + ")", 20, canvas.height - 45);
+                context.fillText(nama + " (" + labelStatus + ")", 20, canvas.height - 45);
                 context.font = "18px Arial";
                 context.fillText(waktu, 20, canvas.height - 18);
 
@@ -88,10 +107,10 @@
         reader.readAsDataURL(file);
     });
 
-    // Kirim foto ke Google Drive & Google Sheets
     btnSubmit.addEventListener('click', () => {
         const nama = document.getElementById('nama').value.trim();
-        const keterangan = document.getElementById('keterangan').value;
+        const keterangan = keteranganSelect.value;
+        const durasiBreak = durasiBreakSelect.value;
         const fotoBase64 = canvas.toDataURL('image/jpeg', 0.8);
         const scriptURL = "https://script.google.com/macros/s/AKfycbxjMbOJGdmnAAdn1bUjPyFBvZLyfNJkekw7RYGGnNqb1Pi045AI4FohHcsp5XAcBSss/exec";
 
@@ -105,7 +124,12 @@
             headers: {
                 'Content-Type': 'text/plain'
             },
-            body: JSON.stringify({ nama: nama, keterangan: keterangan, foto: fotoBase64 })
+            body: JSON.stringify({ 
+                nama: nama, 
+                keterangan: keterangan, 
+                durasiBreak: durasiBreak,
+                foto: fotoBase64 
+            })
         })
         .then(() => {
             statusText.style.color = "#28a745";
